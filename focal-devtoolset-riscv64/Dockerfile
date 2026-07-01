@@ -3,7 +3,7 @@ ARG TAG=20.04
 FROM ${REPO}:${TAG}
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG NODE_VERSION="24.15.0"
+# ARG NODE_VERSION="24.15.0"
 
 # ubuntu keeps its i386/amd64 and other architecture repos separate
 # the default i386/amd64 packages can be found in http://archive.ubuntu.com while all other architectures are in http://ports.ubuntu.com/
@@ -14,8 +14,8 @@ RUN echo "deb [arch=riscv64] http://ports.ubuntu.com/ focal-security main univer
 RUN echo "deb [arch=riscv64] http://ports.ubuntu.com/ focal-updates main universe multiverse restricted" | tee -a /etc/apt/sources.list
 RUN dpkg --add-architecture riscv64
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  gcc-8-riscv64-linux-gnu \
-  g++-8-riscv64-linux-gnu \
+  gcc-10-riscv64-linux-gnu \
+  g++-10-riscv64-linux-gnu \
   binutils-riscv64-linux-gnu \
   build-essential \
   git \
@@ -42,11 +42,13 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 RUN python --version
 
 # setup Node.js
-RUN curl -L -O https://unofficial-builds.nodejs.org/download/release/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-riscv64.tar.gz && \
-    tar -xzf node-v${NODE_VERSION}-linux-riscv64.tar.gz && \
-    cp -R node-v${NODE_VERSION}-linux-riscv64/* /usr/local/ && \
-    rm -rf node-v${NODE_VERSION}-linux-riscv64* && \
-    node --version
+# RUN curl -L -O https://unofficial-builds.nodejs.org/download/release/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-riscv64.tar.gz && \
+#     tar -xzf node-v${NODE_VERSION}-linux-riscv64.tar.gz && \
+#     cp -R node-v${NODE_VERSION}-linux-riscv64/* /usr/local/ && \
+#     rm -rf node-v${NODE_VERSION}-linux-riscv64* && \
+#     node --version
+RUN curl --silent --location https://deb.nodesource.com/setup_24.x | sudo -E bash -
+RUN apt-get update && apt-get install -y nodejs
 
 # install yarn & node-gyp
 RUN npm install -g yarn node-gyp
@@ -56,8 +58,8 @@ WORKDIR /root/vscode
 
 ENV AS=/usr/bin/riscv64-linux-gnu-as \
   AR=/usr/bin/riscv64-linux-gnu-ar \
-  CC=/usr/bin/riscv64-linux-gnu-gcc-8 \
-  CPP=/usr/bin/riscv64-linux-gnu-cpp-8 \
-  CXX=/usr/bin/riscv64-linux-gnu-g++-8 \
+  CC=/usr/bin/riscv64-linux-gnu-gcc-10 \
+  CPP=/usr/bin/riscv64-linux-gnu-cpp-10 \
+  CXX=/usr/bin/riscv64-linux-gnu-g++-10 \
   LD=/usr/bin/riscv64-linux-gnu-ld \
   PKG_CONFIG_PATH=/usr/lib/riscv64-linux-gnu/pkgconfig

@@ -19,7 +19,7 @@ RUN dpkg --add-architecture riscv64
 RUN apt-get update && apt-get install -y --no-install-recommends \
   gcc-10-riscv64-linux-gnu \
   g++-10-riscv64-linux-gnu \
-  binutils-aarch64-linux-gnu \
+  binutils-riscv64-linux-gnu \
   build-essential \
   git \
   pkg-config \
