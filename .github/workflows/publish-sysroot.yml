@@ -1,4 +1,4 @@
-name: sysroot
+name: Publish Sysroot
 
 on:
   push:
@@ -6,8 +6,9 @@ on:
       - "*"
 
 jobs:
-  sysroot:
+  publish:
     runs-on: ubuntu-latest
+    environment: publish-sysroot
     strategy:
       fail-fast: false
       matrix:
@@ -21,7 +22,7 @@ jobs:
             pkg: 's390x-linux-gnu'
             suffix: '-glibc-2.28'
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: 'Prepare dependencies'
         run: |
@@ -65,7 +66,7 @@ jobs:
 
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
+        uses: actions/create-release@0cb9c9b65d5d1901c1f53e5e66eaf4afd303e70e # v1.1.4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -75,7 +76,7 @@ jobs:
           prerelease: false
 
       - name: Publish artifact
-        uses: actions/upload-release-asset@v1
+        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1.0.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

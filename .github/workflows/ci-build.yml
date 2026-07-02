@@ -1,0 +1,59 @@
+name: CI - Build
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - "**/*.md"
+  pull_request:
+    branches:
+      - "**"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - alpine-arm64
+          - alpine-x64
+          - beige-devtoolset-loong64
+          - crimson-loong64
+          # - bionic-devtoolset-ppc64le
+          - focal-arm64
+          - focal-armhf
+          - focal-ppc64le
+          - focal-riscv64
+          - focal-s390x
+          - focal-x64
+          - focal-devtoolset-arm64
+          - focal-devtoolset-armhf
+          - focal-devtoolset-ppc64le
+          - focal-devtoolset-riscv64
+          - focal-devtoolset-s390x
+          - focal-devtoolset-x64
+          - jammy-arm64
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+        if: "!endsWith(matrix.arch, 'x64') && !endsWith(matrix.arch, 'loong64')"
+
+      - name: Set up QEMU for Loong64
+        run: docker run --privileged --rm tonistiigi/binfmt --install loong64
+        if: "endsWith(matrix.arch, 'loong64')"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        with:
+          install: true
+
+      - name: Build and push
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: ${{ matrix.arch }}
+          file: ${{ matrix.arch }}/Dockerfile
+          push: false
