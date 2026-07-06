@@ -6,8 +6,7 @@ on:
       release_tag:
         description: 'Select the release tag to deploy'
         required: true
-        type: choice
-        options: []
+        type: string
   push:
     tags:
       - "*"
