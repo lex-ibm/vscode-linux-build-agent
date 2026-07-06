@@ -5,8 +5,32 @@ on:
     tags:
       - "*"
 
+permissions:
+  contents: write
+
 jobs:
+  prepare-release:
+    runs-on: ubuntu-22.04
+    environment: publish-sysroot
+    steps:
+      - name: 'Create release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -e
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $TAG already exists, reusing it."
+          else
+            echo "Creating release $TAG."
+            gh release create "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Release $TAG" \
+              --notes "Sysroots for $TAG"
+          fi
+
   publish:
+    needs: prepare-release
     runs-on: ubuntu-22.04
     environment: publish-sysroot
     strategy:
@@ -24,7 +48,26 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
+      - name: 'Check if sysroot is already published'
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          ASSET: ${{ matrix.pkg }}${{ matrix.suffix }}.tar.gz
+        run: |
+          set -e
+          assets="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --json assets --jq '.assets[].name' 2>/dev/null || true)"
+          if printf '%s\n' "$assets" | grep -Fxq "$ASSET"; then
+            echo "Asset $ASSET already exists on release $TAG, skipping build."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Asset $ASSET not found on release $TAG, building it."
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: 'Prepare dependencies'
+        if: steps.check.outputs.exists == 'false'
         run: |
           set -e
           sudo apt-get update
@@ -33,6 +76,7 @@ jobs:
           patch rsync meson ninja-build curl
 
       - name: 'Setup crosstool-ng'
+        if: steps.check.outputs.exists == 'false'
         run: |
           set -e
           wget http://crosstool-ng.org/download/crosstool-ng/crosstool-ng-1.26.0.tar.bz2
@@ -43,6 +87,7 @@ jobs:
           make install
 
       - name: 'Build toolchain'
+        if: steps.check.outputs.exists == 'false'
         run: |
           set -e
           export PATH=$PATH:`pwd`/crosstool-ng-1.26.0/out/bin
@@ -52,6 +97,7 @@ jobs:
           ct-ng build
 
       - name: 'Install additional libraries'
+        if: steps.check.outputs.exists == 'false'
         run: |
           set -e
           chmod 0755 -R `pwd`/toolchain-dir/${{ matrix.pkg }}
@@ -59,28 +105,19 @@ jobs:
           `pwd`/toolchain-dir/${{ matrix.pkg }}/${{ matrix.pkg }}/sysroot
 
       - name: 'Create pipeline asset'
+        if: steps.check.outputs.exists == 'false'
         run: |
           set -e
           cd toolchain-dir
           tar -czf ${{ matrix.pkg }}${{ matrix.suffix }}.tar.gz ${{ matrix.pkg }}
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@0cb9c9b65d5d1901c1f53e5e66eaf4afd303e70e # v1.1.4
+      - name: 'Publish artifact'
+        if: steps.check.outputs.exists == 'false'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
-
-      - name: Publish artifact
-        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1.0.2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: toolchain-dir/${{ matrix.pkg }}${{ matrix.suffix }}.tar.gz
-          asset_name: ${{ matrix.pkg }}${{ matrix.suffix }}.tar.gz
-          asset_content_type: application/gzip
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          ASSET: ${{ matrix.pkg }}${{ matrix.suffix }}.tar.gz
+        run: |
+          set -e
+          gh release upload "$TAG" "toolchain-dir/$ASSET" \
+            --repo "$GITHUB_REPOSITORY" --clobber
