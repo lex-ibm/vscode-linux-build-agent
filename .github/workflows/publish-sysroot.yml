@@ -16,7 +16,7 @@ jobs:
           - config: 'ppc64el-gcc-10.5.0-glibc-2.28.config'
             arch: 'ppc64el'
             pkg: 'powerpc64le-linux-gnu'
-            suffix: '-glibc-2.28'
+            suffix: '-glibc-2.28-gcc-10.5.0'
           - config: 's390x-gcc-10.5.0-glibc-2.28.config'
             arch: 's390x'
             pkg: 's390x-linux-gnu'
